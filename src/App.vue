@@ -1,39 +1,78 @@
 <template>
   <div class="latar">
-  <div>
-    <h1>Task List</h1>
-    <div class="task-input">
-  <input type="text" placeholder="Add a new task" v-model="newTask" @keyup.enter="addTask">
-  <button @click="addTask" :class="{ 'clicked': newTask }">Add</button>
-</div>
-<div class="filters">
-  <span :class="{ 'active': filter == 'all' }" @click="setFilter('all')">All</span>
-  <span :class="{ 'active': filter == 'pending' }" @click="setFilter('pending')">Pending</span>
-  <span :class="{ 'active': filter == 'completed' }" @click="setFilter('completed')">Completed</span>
-  <span class="sort-icon" @click="toggleSortDirection">Sort {{ sortDirection }}</span>
-</div>
+    <div>
+      <header>
+        <nav>
+          <ul>
+            <li><a href="#" @click.prevent="setView('post')">Post</a></li>
+            <li><a href="#" @click.prevent="setView('todos')">Todos</a></li>
+          </ul>
+        </nav>
+      </header>
+      
+      <div v-if="currentView === 'todos'">
+        <h1>Task List</h1>
+        <div class="task-input">
+          <input type="text" v-if="!editMode" placeholder="Add a new task" v-model="newTask" @keyup.enter="addTask">
+          <button @click="addOrSaveTask" :class="{ 'clicked': !editMode && newTask, 'edit-mode': editMode }">{{ editMode ? 'Save' : 'Add' }}</button>
+        </div>
+        <div class="filters">
+          <span :class="{ 'active': filter == 'all' }" @click="setFilter('all')">All</span>
+          <span :class="{ 'active': filter == 'pending' }" @click="setFilter('pending')">Pending</span>
+          <span :class="{ 'active': filter == 'completed' }" @click="setFilter('completed')">Completed</span>
+          <span class="sort-icon" @click="toggleSortDirection">Sort {{ sortDirection }}</span>
+        </div>
 
-<ul>
-  <li v-for="task in filteredTasks" :key="task.id">
-    <input type="checkbox" v-model="task.completed" @change="updateTask(task)">
-    <span :class="{ 'completed': task.completed }">{{ task.text }}</span>
-    <button @click="deleteTask(task)">Delete</button>
-  </li>
-</ul>
+        <ul>
+          <li v-for="task in filteredTasks" :key="task.id">
+            <input type="checkbox" v-model="task.completed" @change="updateTask(task)">
+            <span :class="{ 'completed': task.completed, 'edit-mode': editMode && task === editedTask }">
+              <template v-if="editMode && task === editedTask">
+                <input type="text" v-model="task.text">
+              </template>
+              <template v-else>
+                {{ task.text }}
+              </template>
+            </span>
+            <button @click="editTask(task)" v-if="!editMode">Edit</button>
+            <button @click="deleteTask(task)">Delete</button>
+          </li>
+        </ul>
+      </div>
+
+      <div v-if="currentView === 'post'">
+        <h1>User Posts</h1>
+        <div class="post-input">
+          <select v-model="selectedUser" @change="fetchPosts">
+            <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+          </select>
+        </div>
+        <ul class="posts">
+          <li v-for="post in posts" :key="post.id" class="post-item">
+            <h2>{{ post.title }}</h2>
+            <p>{{ post.body }}</p>
+          </li>
+        </ul>
+      </div>
+    </div>
   </div>
-</div>
 </template>
+
 <script>
 export default {
   name: 'TaskList',
   data() {
     return {
+      currentView: 'todos', // 'todos' or 'post'
       newTask: '',
-      tasks: [
-
-      ],
+      tasks: [],
       filter: 'all',
       sort: 'asc',
+      editMode: false,
+      editedTask: null,
+      users: [],
+      selectedUser: null,
+      posts: [],
     };
   },
   computed: {
@@ -55,7 +94,7 @@ export default {
       if (!this.newTask) return;
 
       const newTask = {
-        id: Math.max(...this.tasks.map((task) => task.id)) + 1,
+        id: this.tasks.length > 0 ? Math.max(...this.tasks.map((task) => task.id)) + 1 : 1,
         text: this.newTask,
         completed: false,
       };
@@ -86,135 +125,214 @@ export default {
         }
       });
     },
+    editTask(task) {
+      this.editMode = true;
+      this.editedTask = task;
+    },
+    addOrSaveTask() {
+      if (this.editMode) {
+        this.saveEditedTask();
+      } else {
+        this.addTask();
+      }
+    },
+    saveEditedTask() {
+      if (!this.editedTask.text) return;
+
+      this.editMode = false;
+      this.editedTask = null;
+    },
+    cancelEdit() {
+      this.editMode = false;
+      this.editedTask = null;
+    },
+    setView(view) {
+      this.currentView = view;
+    },
+    async fetchUsers() {
+      const response = await fetch('https://jsonplaceholder.typicode.com/users');
+      this.users = await response.json();
+    },
+    async fetchPosts() {
+      if (!this.selectedUser) return;
+      const response = await fetch(`https://jsonplaceholder.typicode.com/posts?userId=${this.selectedUser}`);
+      this.posts = await response.json();
+    },
   },
   mounted() {
     this.sortTasks();
+    this.fetchUsers();
   },
 };
 </script>
 
 <style>
 .latar {
-  background: url(/src/assets/1.jpeg);
-  width: 500px;
-  height: 500px;
-  border-radius: 40px ;
+  background: none;
+  background: url(/src/assets/gambarr1.jpg);
+  width: 1000px;
+  height: 600px;
+  border-radius: 40px;
   background-size: cover;
   background-position: center;
+  padding: 20px;
 }
 
-@keyframes colorChange {
-  0% {
-    background-color: rgb(255, 0, 0); /* Red */
-  }
-  50% {
-    background-color: rgb(0, 255, 0); /* Green */
-  }
-  100% {
-    background-color: rgb(0, 0, 255); /* Blue */
-  }
+header {
+  background-color: #333;
+  color: white;
+  padding: 10px 0;
+  text-align: center;
+  border-radius: 10px;
 }
 
-  .task-input {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-  }
+nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+}
 
-  .task-input input[type="text"] {
-    padding: 10px;
-    font-size: 16px;
-    border-radius: 5px;
-    border: 1px solid #080808;
-    margin-right: 10px;
-    flex: 1;
-  }
+nav ul li {
+  margin: 0 10px;
+}
 
-  .task-input button {
-    padding: 10px;
-    font-size: 16px;
-    border-radius: 5px;
-    background-color: #4CAF50;
-    color: #030303;
-    border: none;
-    cursor: pointer;
-  }
+nav ul li a {
+  color: white;
+  text-decoration: none;
+}
 
-  .task-input button.clicked {
-    background-color: #008CBA;
-  }
+nav ul li a:hover {
+  text-decoration: underline;
+}
 
-  .filters {
-    margin-bottom: 10px;
-  }
+.task-input, .post-input {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
 
-  .filters span {
-    padding: 5px 10px;
-    font-size: 16px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    margin-right: 10px;
-    cursor: pointer;
-  }
+.task-input input[type="text"], .post-input select {
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid #080808;
+  margin-right: 10px;
+  flex: 1;
+}
 
-  .filters span.active {
-    background-color: #4CAF50;
-    color: #fff;
-  }
+.task-input button {
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  background-color: #4CAF50;
+  color: #030303;
+  border: none;
+  cursor: pointer;
+}
 
-  .sort-icon {
-    padding: 5px 10px;
-    font-size: 16px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    cursor: pointer;
-  }
+.task-input button.clicked {
+  background-color: #008CBA;
+}
 
-  .sort-icon:hover {
-    background-color: #eee;
-  }
+.filters {
+  margin-bottom: 10px;
+}
 
-  ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
+.filters span {
+  padding: 5px 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  margin-right: 10px;
+  cursor: pointer;
+}
 
-  li {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-  }
+.filters span.active {
+  background-color: #4CAF50;
+  color: #fff;
+}
 
-  li input[type="checkbox"] {
-    margin-right: 10px;
-  }
+.sort-icon {
+  padding: 5px 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
 
-  li span {
-    flex: 1;
-    font-size: 16px;
-  }
+.sort-icon:hover {
+  background-color: #eee;
+}
 
-  li span.completed {
-    text-decoration: line-through;
-    color: #0f0f0f;
-  }
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
 
-  li button {
-    padding: 5px 10px;
-    font-size: 16px;
-    border-radius: 5px;
-    background-color: #f44336;
-    color: #0a0909;
-    border: none;
-    cursor: pointer;
-  }
+li {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
 
-  li button:hover {
-    background-color: #e53935;
-  }
+li input[type="checkbox"] {
+  margin-right: 10px;
+}
 
-  li button.clicked {
-    background-color: #008CBA;
-  }
+li span {
+  flex: 1;
+  font-size: 16px;
+}
+
+li span.completed {
+  text-decoration: line-through;
+  color: #0f0f0f;
+}
+
+li button {
+  padding: 5px 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  background-color: #f44336;
+  color: #0a0909;
+  border: none;
+  cursor: pointer;
+}
+
+li button:hover {
+  background-color: #e53935;
+}
+
+li button.clicked {
+  background-color: #008CBA;
+}
+
+.posts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.post-item {
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: white;
+}
+
+.post-item h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.post-item p {
+  margin: 5px 0 0;
+  font-size: 16px;
+  color: #666;
+}
 </style>
