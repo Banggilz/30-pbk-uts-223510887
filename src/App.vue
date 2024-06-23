@@ -1,109 +1,133 @@
 <template>
   <div class="app-container">
+    <!-- Header -->
     <header class="app-header">
-      <nav class="app-nav">
-        <ul>
-          <li><a href="#" @click.prevent="setView('post')" class="nav-link">Post</a></li>
-          <li><a href="#" @click.prevent="setView('todos')" class="nav-link">Todos</a></li>
-        </ul>
-      </nav>
+      <q-toolbar class="header-toolbar">
+        <nav class="app-nav">
+          <ul>
+            <li><q-btn flat @click="navigateTo('/post')" class="nav-link">Post</q-btn></li>
+            <li><q-btn flat @click="navigateTo('/todos')" class="nav-link">Todos</q-btn></li>
+            <li><q-btn flat @click="navigateTo('/albums')" class="nav-link active">Albums</q-btn></li>
+          </ul>
+        </nav>
+        <div class="title-container">
+          <q-toolbar-title class="text-center">Data Nama Mahasiswa</q-toolbar-title>
+        </div>
+        <div class="menu-icon-container">
+          <q-btn flat round dense icon="menu" @click="drawer = !drawer" class="q-mr-sm" />
+        </div>
+      </q-toolbar>
     </header>
 
-    <main class="app-main">
-      <div v-if="currentView === 'todos'" class="task-view">
-        <task-list :tasks="tasks" @update-task="updateTask" @delete-task="deleteTask" @add-task="addTask" @edit-task="editTask" />
-      </div>
+    <!-- Main Content -->
+    <q-page-container>
+      <router-view />
+    </q-page-container>
 
-      <div v-if="currentView === 'post'" class="post-view">
-        <post-list :users="users" :posts="posts" @fetch-posts="fetchPosts" />
-      </div>
-    </main>
+    <!-- Footer -->
+    <q-footer class="footer">
+      <q-toolbar>
+        <q-space />
+        <q-toolbar-title>© Gilang Rahmadani 223510887</q-toolbar-title>
+        <q-space />
+      </q-toolbar>
+    </q-footer>
   </div>
 </template>
 
-<script>
-import TaskList from './components/TaskList.vue';
-import PostList from './components/UserPosts.vue';
+<script setup>
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
-export default {
-  name: 'App',
-  components: {
-    TaskList,
-    PostList,
-  },
-  data() {
-    return {
-      currentView: 'todos',
-      tasks: [],
-      users: [],
-      posts: [],
-    };
-  },
-  methods: {
-    setView(view) {
-      this.currentView = view;
-    },
-    addTask(newTask) {
-      this.tasks.push(newTask);
-    },
-    updateTask(updatedTask) {
-      const index = this.tasks.findIndex(task => task.id === updatedTask.id);
-      if (index !== -1) {
-        this.tasks.splice(index, 1, updatedTask);
-      }
-    },
-    deleteTask(taskId) {
-      this.tasks = this.tasks.filter(task => task.id !== taskId);
-    },
-    async fetchUsers() {
-      const response = await fetch('https://jsonplaceholder.typicode.com/users');
-      this.users = await response.json();
-    },
-    async fetchPosts(userId) {
-      const response = await fetch(`https://jsonplaceholder.typicode.com/posts?userId=${userId}`);
-      this.posts = await response.json();
-    },
-  },
-  mounted() {
-    this.fetchUsers();
-  },
+const router = useRouter();
+const drawer = ref(false);
+
+const navigateTo = (path) => {
+  router.push(path);
 };
 </script>
+
 <style scoped>
+/* Common styles */
+body {
+  background-image: url('https://assets.pepnews.com/img/2y1580622101455/ba6de-sewa%20mobil%20rental.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  margin: 0;
+  font-family: Arial, sans-serif;
+  color: #333; /* Default text color */
+}
+
 .app-container {
-  font-family: 'Arial', sans-serif;
-  color: #333;
-  max-width: 800px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh; /* Ensure full height layout */
 }
 
 .app-header {
-  background-color: #4CAF50;
-  padding: 10px 0;
-  text-align: center;
+  background-color: #1976d2; /* Blue background for header */
+  color: #fff; /* White text color */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 10px 20px; /* Add padding to the header */
+}
+
+.header-toolbar {
+  width: 100%;
+  max-width: 1200px; /* Limit max width of header */
+  margin: 0 auto; /* Center the header horizontally */
+  display: flex;
+  justify-content: space-between; /* Space evenly between elements */
+  align-items: center; /* Center items vertically */
 }
 
 .app-nav ul {
   list-style-type: none;
   padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center; /* Center items vertically */
 }
 
 .app-nav .nav-link {
-  color: white;
   text-decoration: none;
-  font-weight: bold;
+  color: inherit;
+  padding: 10px;
+  transition: background-color 0.3s;
 }
 
-.app-main {
-  margin-top: 20px;
+.app-nav .nav-link.active {
+  background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent background for active link */
+  border-radius: 5px; /* Rounded corners for active link */
 }
 
-.task-view, .post-view {
-  border: 1px solid #ddd;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.title-container {
+  flex: 1; /* Expand to fill remaining space */
+  text-align: center; /* Center text horizontally */
 }
 
-/* Tambahkan lebih banyak gaya sesuai kebutuhan */
+.menu-icon-container {
+  margin-left: 20px; /* Add margin for spacing */
+}
+.menu-icon-container q-btn {
+  color: #fff; /* Ensure icon color matches header text */
+}
+
+.q-page-container {
+  flex: 1; /* Allow main content to grow and fill remaining space */
+}
+
+.q-footer {
+  background-color: #f0f0f0; /* Light gray background for footer */
+  padding: 10px 0;
+  text-align: center;
+  font-size: 14px;
+  position: center;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center; /* Center the content horizontally */
+  align-items: center; /* Center the content vertically */
+}
 </style>
